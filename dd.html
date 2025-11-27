@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>포켓몬 자막 생성기</title>
+
+  <!-- 구글 폰트: 픽셀 폰트 스타일 (한글 지원) -->
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap">
+  
+  <style>
+    /* 픽셀 느낌을 위한 폰트 추가: DungGeunMo (둥근모) - 한글 픽셀 폰트 */
+    @font-face {
+      font-family: 'DungGeunMo';
+      src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    /* 전체 화면 공통 스타일 */
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #d0d0d0; /* 회색 배경 (에뮬레이터 느낌) */
+      font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif; /* 기본 폰트 */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    /* 위쪽 입력 패널 (설정/입력 부분) */
+    .control-panel {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 16px;
+      max-width: 720px;
+      width: 100%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15); /* 살짝 그림자 */
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 80px;
+      font-size: 16px;
+      box-sizing: border-box;
+      padding: 8px;
+      resize: vertical; /* 세로 크기 조절 가능 */
+      font-family: 'Noto Sans KR', sans-serif; /* 입력창도 같은 폰트 사용 */
+    }
+
+    button {
+      margin-top: 10px;
+      margin-right: 6px;
+      padding: 8px 16px;
+      font-size: 14px;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+      background: #000000;
+      color: #ffffff;
+    }
+
+    /* 실제로 캡처해서 쓸 포켓몬 스타일 대화창 */
+    .pokemon-box-wrapper {
+      display: inline-block; /* 캡처 범위를 딱 박스 크기로 맞추기 위해 사용 */
+    }
+
+    #capture {
+      width: 640px;           /* 가로 해상도 (원하면 나중에 조절 가능) */
+      height: 100px;          /* 세로 해상도 (2줄 기준으로 꽉 차게) */
+      background: #f8f8f8;    /* 살짝 아이보리 배경 (GBC 느낌) */
+      border: 4px solid #000; /* 바깥쪽 굵은 검정 테두리 */
+      border-radius: 8px;     /* 모서리 둥글게 */
+      box-sizing: border-box;
+      position: relative;
+      overflow: hidden;       /* border-radius가 제대로 적용되도록 */
+    }
+
+    /* 안쪽 얇은 테두리 (포켓몬 대화창 느낌 살리기) */
+    #capture::before {
+      content: "";
+      position: absolute;
+      left: 6px;
+      top: 6px;
+      right: 6px;
+      bottom: 6px;
+      border: 2px solid #000;
+      border-radius: 4px;     /* 안쪽 테두리도 둥글게 */
+    }
+
+    /* 글씨가 표시되는 영역 */
+    #text-output {
+      position: absolute;
+      left: 22px;
+      right: 40px;
+      top: 20px;             /* 위쪽에서 고정 위치 (1줄일 때도 위쪽에 가깝게) */
+
+      font-family: 'DungGeunMo', 'Noto Sans KR', sans-serif; /* 픽셀 폰트 우선 적용 */
+      font-size: 24px;        /* 폰트 크기 (이미지 기준으로 더 크게) */
+      line-height: 1.1;       /* 줄 간격 (포켓몬 골드 스타일: 매우 좁게) */
+      letter-spacing: 0px;    /* 자간 (포켓몬 골드 스타일: 기본값) */
+      white-space: pre-line;  /* textarea의 엔터(줄바꿈)를 그대로 반영 */
+      image-rendering: -webkit-optimize-contrast; /* 픽셀 그래픽 느낌 강조 */
+      image-rendering: crisp-edges; /* 픽셀 느낌 */
+      text-rendering: optimizeSpeed; /* 텍스트 렌더링 최적화 */
+    }
+
+    /* 오른쪽 아래 화살표 (다음 대사 표시) - 아래쪽을 가리키는 삼각형 */
+    .arrow {
+      position: absolute;
+      right: 18px;
+      bottom: 6px;
+      width: 0;
+      height: 0;
+      border-top: 10px solid #000;         /* 아래쪽을 가리키는 삼각형 (크게) */
+      border-left: 6px solid transparent;  /* 왼쪽 투명 */
+      border-right: 6px solid transparent; /* 오른쪽 투명 */
+    }
+  </style>
+</head>
+<body>
+  <!-- 위쪽: 문장 입력과 버튼 부분 -->
+  <div class="control-panel">
+    <p>포켓몬 2세대 스타일 자막 생성기입니다.</p>
+    <p>1줄 이상 적고, 줄 바꾸고 싶으면 엔터를 눌러주세요.</p>
+    <textarea id="text-input">반가워요! 나는 포켓몬이야!</textarea>
+    <br />
+    <button id="update-btn">미리보기 업데이트</button>
+    <button id="save-btn">PNG로 저장하기</button>
+  </div>
+
+  <!-- 아래쪽: 실제로 캡처될 포켓몬 대화창 영역 -->
+  <div class="pokemon-box-wrapper">
+    <div id="capture">
+      <div id="text-output">반가워요 ! 나는 포켓몬이야!</div>
+      <div class="arrow"></div>
+    </div>
+  </div>
+
+  <!-- html2canvas 라이브러리: HTML 영역을 캔버스로 캡처해서 PNG로 만들 때 사용 -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script>
+    // DOM 요소들 가져오기
+    const textInput = document.getElementById("text-input");   // 내가 입력하는 텍스트 박스
+    const textOutput = document.getElementById("text-output"); // 포켓몬 창 안에 보이는 글씨
+    const updateBtn = document.getElementById("update-btn");   // 미리보기 버튼
+    const saveBtn = document.getElementById("save-btn");       // PNG 저장 버튼
+    const capture = document.getElementById("capture");        // 캡처할 전체 박스
+
+    // [미리보기 업데이트] 버튼 클릭 시 실행
+    updateBtn.addEventListener("click", () => {
+      // textarea에 적힌 내용을 그대로 포켓몬 창 안으로 옮김
+      textOutput.textContent = textInput.value;
+    });
+
+    // [PNG로 저장하기] 버튼 클릭 시 실행
+    saveBtn.addEventListener("click", () => {
+      // html2canvas로 capture 영역을 캔버스로 변환
+      html2canvas(capture, {
+        scale: 3 // 해상도 3배 업스케일 (더 선명한 PNG를 얻기 위해)
+      }).then(canvas => {
+        // a 태그(가짜 링크)를 만들어 자동으로 다운로드 시킴
+        const link = document.createElement("a"); // 보이지 않는 링크 생성
+        link.download = "pokemon-caption.png";    // 저장될 파일 이름 설정
+        link.href = canvas.toDataURL("image/png"); // 캔버스를 PNG 데이터 URL로 변환
+        link.click();                             // 강제 클릭 → 파일 다운로드
+      });
+    });
+  </script>
+</body>
+</html>
